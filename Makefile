@@ -4,8 +4,9 @@
 # @file
 # @version 0.1
 
-filename = quadratic_convergence.py
-scene = QuadConvergence
+filename =newton_frac.py
+scene =NewtonFractal
+
 N = 0
 q = l
 
@@ -23,4 +24,8 @@ iterativeopt:
 
 quadconvergence:
 	manim quadratic_convergence.py  QuadConvergence -p -qm  --leave_progress_bars && sleep 1
+
+newtonfractal:
+	manim newton_frac.py   NewtonFractal -p -qm  --leave_progress_bars && sleep 1
+
 #end
