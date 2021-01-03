@@ -20,12 +20,15 @@ play:
 	xdg-open media/videos/newton/480p15/ThreeDFunction.mp4
 
 iterativeopt:
-	manim newton.py  IterativeOpt -p -qm  --leave_progress_bars && sleep 1
+	manim iterative_opt.py  IterativeOpt -p -qm  --leave_progress_bars && sleep 1
 
 quadconvergence:
 	manim quadratic_convergence.py  QuadConvergence -p -qm  --leave_progress_bars && sleep 1
 
 newtonfractal:
 	manim newton_frac.py   NewtonFractal -p -qm  --leave_progress_bars && sleep 1
+
+gradientdescent:
+	manim gradient_descent_1d.py   GradientDescent1D -p -qm  --leave_progress_bars && sleep 1
 
 #end

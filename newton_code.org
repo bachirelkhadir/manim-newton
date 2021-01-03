@@ -84,6 +84,8 @@ def plot_newton_fractal(f, fprime, n=200, domain=(-2, 2, -2, 2)):
 
 
 #+begin_src jupyter-python
+
+F = lambda z: z**4/3 - 2*x
 f = lambda z: z**3 - 2
 fprime = lambda z: 3*z**2
 m = plot_newton_fractal(f, fprime, n=400)
