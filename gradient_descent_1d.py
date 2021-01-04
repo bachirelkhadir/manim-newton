@@ -5,25 +5,17 @@ import numpy as np
 from scipy import linalg
 from scipy.stats import norm
 from manim import *
-
 config.max_files_cached = 10000
 config.background_color = "#1f303e"
 
 PROJECT_DIR = '/home/bachir/Dropbox/Job_Applications/Academia/Application_Fall_2020/Application_By_School/UCLouvain/Presentations/newton/manim/'
 sys.path.append(PROJECT_DIR)
 from helper_functions import *
+from opt_parameters import *
 
 
-f = lambda x: (x**4/4 - 2*x)/5. + 1
-df = lambda x: (x**3 - 2)/5.
-ddf = lambda x: 2*x**2
 
-quad_f = lambda x: (lambda y: f(x) + df(x) * (y - x) + 1/2 * (y-x)**2 * ddf(x))
-
-f_str = r"f(x) = \frac1{20} x^4 - \frac 25 x + 1"
-
-NUM_DIGITS=30
-x0 = -0.5
+DEBUG = False
 COLOR_CURVE = BLUE
 COLOR_TANGENT = YELLOW
 COLOR_QUAD = RED
@@ -41,12 +33,24 @@ def run_newton(f, df, x0, num_iter=10000):
 xks_newton = run_newton(f, df, x0)
 
 class GradientDescent1D(ZoomedScene):
+    NUM_BLACK_SCREENS = 0
+    def wait(self, timeout=1):
+        self.NUM_BLACK_SCREENS += 1
+        print("Blackish Screen: ", self.NUM_BLACK_SCREENS)
+        color = BLACK
+        rect = Rectangle(fill_color=color, strole_color=color, fill_opacity=1).scale(100)
+        super(GradientDescent1D, self).wait(timeout)
+
+        if not DEBUG:
+            self.add(rect)
+            super(GradientDescent1D, self).wait(timeout)
+            self.remove(rect)
 
     def __init__(self):
         config = {
-            "zoom_factor": 0.7,
+            "zoom_factor": 0.4,
             "zoomed_display_height": 4,
-            "zoomed_display_width": 4,
+            "zoomed_display_width": 6,
             "image_frame_stroke_width": 20,
             "zoomed_display_corner": UL,
             "zoomed_camera_config": {
@@ -62,15 +66,15 @@ class GradientDescent1D(ZoomedScene):
         ###############
         # show x0 and f(x0)
         ###############
-        self.add(self.mark(x0, label="x_0"))
+        self.play(Write(self.mark(x0, label="x_0")))
         dashed_lines_fx0 = VGroup(
-            self.mark(0, f(x0), label="f(x_0)", direction=LEFT/2),
+            self.dashed_line([x0, 0], f(x0) * UP),
             self.dashed_line([0, f(x0)], x0 * RIGHT),
-            self.dashed_line([x0, 0], f(x0) * UP)
+            self.mark(0, f(x0), label="f(x_0)", direction=RIGHT/2),
         )
-        self.add(dashed_lines_fx0)
-
+        self.play(Write(dashed_lines_fx0))
         self.wait()
+
         dashed_lines_fx0.set_opacity(.2)
         self.wait()
 
@@ -95,25 +99,26 @@ class GradientDescent1D(ZoomedScene):
         # show_zoom_in
         ###############
 
-        self.zoom_in(self.mark(x0, f(x0)).shift(LEFT/2))
+        self.zoom_in(self.mark(x0, f(x0)))#.shift(RIGHT/2))
         self.wait()
 
         ###############
         # move x until it goes under the curve
         ###############
-        Dx = 1
+        Dx = 2
         moving_x = self.mark(x0, f(x0))
         moving_xs = [moving_x.copy() for _ in range(3)]
         moving_xs[1].set_color(COLOR_TANGENT)
         moving_xs[2].set_color(COLOR_CURVE)
-        path_x_axis = self.line([x0, 0], Dx * LEFT)
-        path_tangent = self.line([x0, f(x0)], Dx * LEFT - df(x0)* Dx * UP)
-        path_curve = ParametricFunction(lambda t: self.coords_to_point(x0 - t*Dx, f(x0 - t*Dx)))
+        path_x_axis = self.line([x0, 0], Dx * RIGHT)
+        path_tangent = self.line([x0, f(x0)], Dx * RIGHT + df(x0)* Dx * UP)
+        path_curve = ParametricFunction(lambda t: self.coords_to_point(x0 + t*Dx, f(x0 +     t*Dx)))
 
         self.play(MoveAlongPath(moving_xs[0], path_x_axis),
                   MoveAlongPath(moving_xs[1], path_tangent),
                   MoveAlongPath(moving_xs[2], path_curve),
-                  rate_func=rush_into
+                  rate_func=rush_into,
+                  run_time=3,
                   )
         self.wait()
 
@@ -127,11 +132,11 @@ class GradientDescent1D(ZoomedScene):
         # show gradient
         ################
 
-
-        grad0 = self.vec(x0 * RIGHT, df(x0)*LEFT/3).set_color(YELLOW).set_stroke(width=5)
-        grad0_big = self.vec(x0 * RIGHT, df(x0)*LEFT).set_color(YELLOW).set_stroke(width=5)
-        grad0_small = self.vec(x0 * RIGHT, df(x0)*LEFT/6).set_color(YELLOW).set_stroke(width=5)
-        self.add(grad0)
+        dfx0 = df(x0) * LEFT
+        grad0 = self.vec(x0 * RIGHT, dfx0).set_color(YELLOW).set_stroke(width=5)
+        grad0_big = self.vec(x0 * RIGHT, 5*dfx0).set_color(YELLOW).set_stroke(width=5)
+        grad0_small = self.vec(x0 * RIGHT, dfx0/2).set_color(YELLOW).set_stroke(width=5)
+        self.play(ShowCreation(grad0))
         self.wait()
 
 
@@ -149,31 +154,48 @@ class GradientDescent1D(ZoomedScene):
 
         graph = add_2d_func(self.axes, quad_f(x0), -2, 3.)
         graph.set_stroke(width=2, color=COLOR_QUAD)
-        self.add(graph)
+        self.play(ShowCreation(graph))
 
+
+        self.wait()
         for mobj in self.zoomed_frame_objects:
             self.add(mobj)
+
+
+        self.wait()
+
+        # Draw quad minimizer
+        x_quad = x0 - df(x0) / ddf(x0)
+        xfx_quad = [x_quad, quad_f(x0)(x_quad)]
+        self.play(ShowCreation(self.mark(*xfx_quad).set_color(COLOR_QUAD)))
+        self.wait()
+
+        # Draw dashed line to x1
+        self.play(Write(self.dashed_line(xfx_quad, xfx_quad[1]*DOWN)))
+
+        # Figure out the math
+
         return
 
     def add_str_f(self):
-        self.add(MathTex(f_str).to_corner(UP))
+        self.play(Write(MathTex(f_str).to_corner(UP)))
 
 
     def add_graph_f(self):
         x_min, x_max = -4, 4
         y_min, y_max = -2, 4
 
-        origin = 2 * DOWN
+        origin = 2 * DOWN + 2 * RIGHT
         x_axis, y_axis, coords_to_point = axes = add_2d_axes(x_min, x_max, y_min, y_max, origin)
         self.axes = axes
         self.coords_to_point = coords_to_point
         graph = add_2d_func(axes, f, -2, 3.)
 
-        self.add(graph)
 
         x_axis.set_opacity(.5)
         y_axis.set_opacity(.5)
-        self.add(*axes[:2])
+        self.play(Write(VGroup(*axes[:2])))
+        self.play(Write(graph))
 
     def zoom_in(self, dot):
 
@@ -225,10 +247,10 @@ class GradientDescent1D(ZoomedScene):
         DfDx = RIGHT + df(x) * UP
         DfDx /= np.linalg.norm(DfDx)
         xfx = (x, f(x))
-        self.add(self.mark(*xfx))
-        for i in (2, -3):
-            self.add(self.dashed_line(xfx, i * DfDx).set_color(COLOR_TANGENT))
-
+        self.play(Write(self.mark(*xfx)))
+        self.play(*[
+            ShowCreation(self.dashed_line(xfx, i * DfDx).set_color(COLOR_TANGENT))
+            for i in (2, -3)])
 
     def mark(self, x, y=0, label=None, direction=DOWN):
         mark_group = [Line(UL, DR, stroke_width=2),

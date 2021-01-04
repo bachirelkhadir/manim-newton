@@ -15,21 +15,35 @@ sys.path.append(PROJECT_DIR)
 from helper_functions import *
 
 
+COLOR_STAR = RED
+COLOR_ARROW = YELLOW
 
 directions = np.array([
-    [0, -2, 0],
-    [-1.5, .5, 0],
-    [1, 1, 0],
+    [0.5, -2, 0],
+    [-1.5, -.5, 0],
+    [-1, 1, 0],
 ])
 
+f = lambda u,v: (u-.5)**2/2 + (v+.5)**2/3 + .5
+x_star = np.array([.5, -.5, 0])
 x0 = np.array([1, 1, 0], dtype=float)
 
+# def add_black_screen(scene):
+#     scene.wait()
+
 def add_label_x(x, k):
-    label_x = MathTex(f"x_{k}")
+    label_x = MathTex(f"\\bf x_{k}")
     label_x.next_to(x, -OUT)\
             .rotate(PI/2, axis=RIGHT)\
             .rotate(PI/2, axis=OUT)
     return label_x
+
+def add_label_d(d, k):
+    label_d = MathTex(f"\\bf d_{k}")
+    label_d.next_to(d, -OUT)\
+            .rotate(PI/2, axis=RIGHT)\
+            .rotate(PI/2, axis=OUT)
+    return label_d
 
 class IterativeOpt(ThreeDScene):
     # def __init__(self):
@@ -40,7 +54,6 @@ class IterativeOpt(ThreeDScene):
         self.set_camera_orientation(phi=65 * DEGREES, theta=-30 * DEGREES, distance=10)
         # self.set_camera_orientation(phi=0, theta=0, distance=100)
 
-        f = lambda u,v: u**2/2 + v**2/3 + .3
         def param_f(u, v):
             x = u
             y = v
@@ -50,10 +63,10 @@ class IterativeOpt(ThreeDScene):
         graph = ParametricSurface(
             param_f,
             resolution=(resolution_fa, resolution_fa),
-            v_min=-1.5,
+            v_min=-2.,
             v_max=+1.5,
             u_min=-1.5,
-            u_max=+1.5,
+            u_max=+2,
         )
         plane = ParametricSurface(
             lambda u, v: np.array([u, v, -0.01]),
@@ -81,7 +94,7 @@ class IterativeOpt(ThreeDScene):
         axes.axis_labels[1].rotate(PI/2,axis=RIGHT)
         axes.axis_labels[1].rotate(PI/2,axis=OUT)
 
-        z_label = axes.get_axis_label("f(x)", axes.get_z_axis(), edge=OUT, direction=RIGHT)
+        z_label = axes.get_axis_label(r"f({\bf x})", axes.get_z_axis(), edge=OUT, direction=RIGHT)
         z_label.rotate(PI/2,axis=RIGHT)
         z_label.rotate(PI/2,axis=OUT)
         z_label.shift(RIGHT)
@@ -96,74 +109,105 @@ class IterativeOpt(ThreeDScene):
         add_black_screen(self)
 
 
+        # helper functions to plot on graph
         x = lambda u,v: Dot(color=RED).move_to([u, v, 0])
         fx = lambda u,v: Dot().move_to([u, v, f(u, v)])
-        # self.add(Rectangle(fill_color=BLUE, strok_color=YELLOW, fill_opacity=1), axes)
-        self.add(x(*x0[:2]),)
-        self.add(add_label_x(x0, 0),)
-        self.add(fx(*x0[:2]),)
+
+        ####################
+        # add xstar
+        ####################
+
+        self.add(x(*x_star[:2]),)
+        self.add(add_label_x(x_star, "*").set_color(COLOR_STAR),)
+        vert_line_xstar = DashedLine(x(*x_star[:2]), fx(*x_star[:2])).set_color(COLOR_STAR)
+        self.play(ShowCreation(vert_line_xstar))
+        self.add(fx(*x_star[:2]).set_color(COLOR_STAR),)
         add_black_screen(self)
+
+        ####################
+        # add x0
+        ####################
+        self.remove(vert_line_xstar)
+        self.add(x(*x0[:2]).set_color(COLOR_ARROW),)
+        self.add(add_label_x(x0, 0).set_color(COLOR_ARROW),)
+        self.add(fx(*x0[:2]).set_color(COLOR_ARROW),)
+        add_black_screen(self)
+
+        #########################
+        # Add formula
+        ##########################
 
         #######################
         # Plot trajectory
         ######################
 
         xk = x0
-        self.add(add_label_x(x0, 0))
         for k, d in enumerate(directions):
-            dot_x, dot_fx = self.create_path(xk, d, f)
+            if k==1:
+                iter_formula = MathTex(r"\bf x_{k+1} = x_k +", "d_k").to_corner(DL)
+                self.add_fixed_in_frame_mobjects(iter_formula)
+                add_black_screen(self)
+            dot_x, dot_fx, vec_d, animations = self.create_path(xk, d, f)
             xk += d
-            self.add(add_label_x(xk, k+1))
+            self.play(animations['vec'][0])
+            self.add(add_label_d(vec_d, k+1).set_color(COLOR_ARROW))
+            self.play(*animations['vec'][1:])
+            self.add(add_label_x(xk, k+1).set_color(COLOR_ARROW))
+            add_black_screen(self)
+            self.play(*animations['curve'])
+            add_black_screen(self)
 
-        self.wait()
+        ####################
+        # Add quesiton about direction
+        ####################
+        self.play(Indicate(iter_formula[1]))
+        add_black_screen(self)
+
     def create_path(self, x0, d, f, run_time=1):
         def traj_on_plane_at(t):
             return x0 + t * d
-
 
         def traj_on_curve_at(t):
             x1, x2, _ = traj_on_plane_at(t)
             return [x1, x2, f(x1, x2)]
 
 
-        vec_d = Arrow(x0, x0+d)
-        self.play(ShowCreation(vec_d))
+        animations = {}
+        vec_d = Arrow(x0, x0+d).set_color(COLOR_ARROW)
 
         # Trajectory on plane
-        dot_on_plane = Dot()
+        dot_on_plane = Dot().set_color(COLOR_ARROW)
         traj_on_plane = ParametricFunction(traj_on_plane_at,
                                   t_max=1, fill_opacity=1)
         traj_on_plane_tracker = CurvesAsSubmobjects(traj_on_plane.copy())
-        traj_on_plane_tracker.set_color(RED)
+        traj_on_plane_tracker.set_color(COLOR_ARROW)
         dot_on_plane.add_updater(lambda m: m.move_to(traj_on_plane.get_end()))
         traj_on_plane.fade(1)
-        self.add(dot_on_plane, self.axes)
 
-        self.play(
+
+        animations['vec'] = [
+            ShowCreation(vec_d),
+            Write(dot_on_plane),
             ShowCreation(traj_on_plane),
             ShowCreation(traj_on_plane_tracker),
-            run_time=run_time
-        )
+        ]
 
-        add_black_screen(self)
         # Lifted trajectory on graph of f
-        dot_on_curve = Dot()
+        dot_on_curve = Dot().set_color(COLOR_ARROW)
         traj_on_curve = ParametricFunction(traj_on_curve_at,
                                   t_max=1, fill_opacity=1)
         traj_on_curve_tracker = CurvesAsSubmobjects(traj_on_curve.copy())
-        traj_on_curve_tracker.set_color(RED)
+        traj_on_curve_tracker.set_color(COLOR_ARROW)
         dot_on_curve.add_updater(lambda m: m.move_to(traj_on_curve.get_end()))
         traj_on_curve.fade(1)
-        self.add(dot_on_curve, self.axes)
 
-        self.play(
+        animations['curve'] = [
+            Write(dot_on_curve),
             ShowCreation(traj_on_curve),
             ShowCreation(traj_on_curve_tracker),
-            run_time=run_time
-        )
+        ]
 
-        add_black_screen(self)
-        return dot_on_plane, dot_on_curve
+        return dot_on_plane, dot_on_curve, vec_d, animations
 # Local Variables:
 # bachir-prog-local-mode: t
 # eval: (setenv "WORKON_HOME" "/home/bachir/miniconda3/envs")

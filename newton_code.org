@@ -5,13 +5,19 @@
 
 #+begin_src jupyter-python
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+import sys
+import  importlib
+PROJECT_DIR = '/home/bachir/Dropbox/Job_Applications/Academia/Application_Fall_2020/Application_By_School/UCLouvain/Presentations/newton/manim/'
+sys.path.append(PROJECT_DIR)
 #+end_src
 
 #+RESULTS:
 
 
+* Fractal
 #+begin_src jupyter-python
 
 # A list of colors to distinguish the roots.
@@ -84,19 +90,73 @@ def plot_newton_fractal(f, fprime, n=200, domain=(-2, 2, -2, 2)):
 
 
 #+begin_src jupyter-python
-
-F = lambda z: z**4/3 - 2*x
-f = lambda z: z**3 - 2
-fprime = lambda z: 3*z**2
-m = plot_newton_fractal(f, fprime, n=400)
+from opt_parameters import *
+g = df
+dg = ddf
+m = plot_newton_fractal(g, dg, n=100)
 #+end_src
 
 #+RESULTS:
-[[file:./.ob-jupyter/1d615fc1c413a508181a49e8eb3cc53a918af38a.png]]
+[[file:./.ob-jupyter/242a093b34938a4eea883f1512d12d5ce34e760c.png]]
+
 #+begin_src jupyter-python
 np.save(open("newton_fractal.np", "wb"), m)
 np.load(open("newton_fractal.np", "rb")).shape
 #+end_src
 
 #+RESULTS:
-| 400 | 400 |
+| 100 | 100 |
+
+
+* Gradient descent steps
+
+** Gradinet descent
+#+begin_src jupyter-python
+from opt_parameters import *
+x0 = 1.
+xk = x0
+xks = [['xk', 'f(xk)'], [xstar, f(xstar)]]
+alpha = 1.
+for _ in range(10):
+    xk = xk - alpha * df(xk)
+    xks.append([xk, f(xk)])
+xks
+#+end_src
+
+#+RESULTS:
+|                 xk |              f(xk) |
+| 1.2599210498948732 |  0.622023685031538 |
+|                1.2 |            0.62368 |
+|             1.2544 | 0.6220381588147404 |
+|    1.2596354629632 | 0.6220237238661482 |
+| 1.2599074059099007 | 0.6220236851201898 |
+| 1.2599204008548333 | 0.6220236850317387 |
+| 1.2599210190266201 | 0.6220236850315385 |
+| 1.2599210484267978 |  0.622023685031538 |
+| 1.2599210498250524 |  0.622023685031538 |
+| 1.2599210498915525 |  0.622023685031538 |
+| 1.2599210498947153 |  0.622023685031538 |
+
+** Newton Step
+#+begin_src jupyter-python
+xk = x0
+xks_newton = [['xk', 'f(xk)'], [xstar, f(xstar)]]
+for _ in range(10):
+    xk = xk - df(xk) / ddf(xk)
+    xks_newton.append([xk, f(xk)])
+xks_newton
+#+end_src
+
+#+RESULTS:
+|                 xk |              f(xk) |
+| 1.2599210498948732 |  0.622023685031538 |
+|               0.35 |       0.8607503125 |
+| 1.9476530612244902 | 0.9404149148292252 |
+|  1.805611566769896 | 0.8092113764068785 |
+| 1.6863957164013341 | 0.7298387513780945 |
+| 1.5880813510681857 | 0.6827922592063901 |
+| 1.5085752823573109 | 0.6555330285354205 |
+| 1.4455989626035115 | 0.6401144973087942 |
+|   1.39674400293916 | 0.6316017316696982 |
+| 1.3595867150584446 | 0.6270084967162032 |
+| 1.3318252806984963 | 0.6245808624265965 |

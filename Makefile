@@ -4,9 +4,11 @@
 # @file
 # @version 0.1
 
-filename =newton_frac.py
-scene =NewtonFractal
+# filename =newton_frac.py
+# scene =NewtonFractal
 
+filename = iterative_opt.py
+scene = IterativeOpt
 N = 0
 q = l
 
