@@ -276,18 +276,14 @@ class GradientDescent1D(ZoomedScene):
         """
         return Line(0*RIGHT, d)\
                     .shift(self.coords_to_point(*s[:2]))
+
+
     def dashed_line(self, s, d):
         return DashedLine(0*RIGHT, d)\
                     .shift(self.coords_to_point(*s[:2]))
 
 
     def vec(self, s, d):
-        """
-        Return a line in the graph coordinates.
-        Args:
-          s: start poitn
-          d: direction
-        """
         return Vector(d)\
                     .shift(self.coords_to_point(*s[:2]))
 
