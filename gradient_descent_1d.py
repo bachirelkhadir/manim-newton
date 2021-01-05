@@ -61,12 +61,15 @@ class GradientDescent1D(ZoomedScene):
 
     def construct(self):
         self.add_str_f()
+        self.wait()
         self.add_graph_f()
+        self.wait()
 
         ###############
         # show x0 and f(x0)
         ###############
         self.play(Write(self.mark(x0, label="x_0")))
+        self.wait()
         dashed_lines_fx0 = VGroup(
             self.dashed_line([x0, 0], f(x0) * UP),
             self.dashed_line([0, f(x0)], x0 * RIGHT),

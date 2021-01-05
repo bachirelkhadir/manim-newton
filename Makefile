@@ -7,8 +7,13 @@
 # filename =newton_frac.py
 # scene =NewtonFractal
 
-filename = iterative_opt.py
-scene = IterativeOpt
+# filename = iterative_opt.py
+# scene = IterativeOpt
+
+
+filename = gradient_descent_1d.py
+scene = GradientDescent1d
+
 N = 0
 q = l
 

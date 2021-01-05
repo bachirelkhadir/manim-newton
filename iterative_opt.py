@@ -10,8 +10,9 @@ from manim import *
 config.max_files_cached = 10000
 config.background_color = "#1f303e"
 
-PROJECT_DIR = '/home/bachir/Dropbox/Job_Applications/Academia/Application_Fall_2020/Application_By_School/UCLouvain/Presentations/newton/manim/'
-sys.path.append(PROJECT_DIR)
+DEBUG = config.quality == "low_quality"
+# PROJECT_DIR = '/home/bachir/Dropbox/Job_Applications/Academia/Application_Fall_2020/Application_By_School/UCLouvain/Presentations/newton/manim/'
+# sys.path.append(PROJECT_DIR)
 from helper_functions import *
 
 
@@ -28,8 +29,9 @@ f = lambda u,v: (u-.5)**2/2 + (v+.5)**2/3 + .5
 x_star = np.array([.5, -.5, 0])
 x0 = np.array([1, 1, 0], dtype=float)
 
-# def add_black_screen(scene):
-#     scene.wait()
+if DEBUG:
+    print("BLACK SCREENS not shown")
+    add_black_screen = lambda scene: scene.wait()
 
 def add_label_x(x, k):
     label_x = MathTex(f"\\bf x_{k}")
@@ -51,7 +53,7 @@ class IterativeOpt(ThreeDScene):
 
     def construct(self):
         resolution_fa = 10
-        self.set_camera_orientation(phi=65 * DEGREES, theta=-30 * DEGREES, distance=10)
+        self.set_camera_orientation(phi=65 * DEGREES, theta=-30 * DEGREES, distance=20)
         # self.set_camera_orientation(phi=0, theta=0, distance=100)
 
         def param_f(u, v):
@@ -60,13 +62,29 @@ class IterativeOpt(ThreeDScene):
             z = f(u, v)
             return np.array([x, y, z])
 
+        def param_f_curved(u, v):
+            x = u
+            y = v
+            z = f(u*1.4, v*1.4)
+            return np.array([x, y, z])
+
         graph = ParametricSurface(
             param_f,
             resolution=(resolution_fa, resolution_fa),
-            v_min=-2.,
+            u_min=-1.,
+            u_max=2,
+            v_min=-2,
             v_max=+1.5,
-            u_min=-1.5,
-            u_max=+2,
+        )
+
+
+        graph_curved = ParametricSurface(
+            param_f_curved,
+            resolution=(resolution_fa, resolution_fa),
+            u_min=-1.,
+            u_max=2,
+            v_min=-2,
+            v_max=+1.5,
         )
         plane = ParametricSurface(
             lambda u, v: np.array([u, v, -0.01]),
@@ -79,11 +97,14 @@ class IterativeOpt(ThreeDScene):
         )
 
 
-        graph.set_style(stroke_color=GREEN)
-        graph.set_fill_by_checkerboard(GREEN, BLUE, opacity=0.3)
+        for g in (graph, graph_curved):
+            g.set_style(stroke_color=GREEN)
+            g.set_fill_by_checkerboard(GREEN, BLUE, opacity=0.3)
 
         plane.set_style(fill_color=BLACK, fill_opacity=.8, stroke_color=BLUE)
-        axes = self.axes = ThreeDAxes()
+        axes = self.axes = ThreeDAxes(x_min=-3,
+                                      y_min=-3,
+                                      z_min=-1)
 
 
 
@@ -97,16 +118,19 @@ class IterativeOpt(ThreeDScene):
         z_label = axes.get_axis_label(r"f({\bf x})", axes.get_z_axis(), edge=OUT, direction=RIGHT)
         z_label.rotate(PI/2,axis=RIGHT)
         z_label.rotate(PI/2,axis=OUT)
-        z_label.shift(RIGHT)
+        z_label.shift(UP)
         axes.add(z_label)
 
 
+        top_label = Tex("An example with n=2").to_corner(UL)
+        self.add_fixed_in_frame_mobjects(top_label)
+        self.play(Write(top_label))
         self.play(Write(axes))
+        self.add(plane)
         add_black_screen(self)
         self.play(Write(graph))
         add_black_screen(self)
-        self.add(plane)
-        add_black_screen(self)
+
 
 
         # helper functions to plot on graph
@@ -124,44 +148,106 @@ class IterativeOpt(ThreeDScene):
         self.add(fx(*x_star[:2]).set_color(COLOR_STAR),)
         add_black_screen(self)
 
+        #########################
+        # Iterative Opt algorithms
+        ##########################
+        label_iter_algorithms = Tex("Iterative Optimization Algorithms").scale(.8)
+        label_iter_algorithms.to_corner(DL).shift(UP)
+        self.add_fixed_in_frame_mobjects(label_iter_algorithms)
+        self.remove(top_label)
+        self.play(Write(label_iter_algorithms))
+        add_black_screen(self)
+
         ####################
         # add x0
         ####################
         self.remove(vert_line_xstar)
         self.add(x(*x0[:2]).set_color(COLOR_ARROW),)
         self.add(add_label_x(x0, 0).set_color(COLOR_ARROW),)
+        vert_line_x0 = DashedLine(x(*x0[:2]), fx(*x0[:2])).set_color(COLOR_ARROW)
+        self.play(ShowCreation(vert_line_x0))
         self.add(fx(*x0[:2]).set_color(COLOR_ARROW),)
         add_black_screen(self)
-
-        #########################
-        # Add formula
-        ##########################
+        self.remove(vert_line_x0)
 
         #######################
         # Plot trajectory
         ######################
 
         xk = x0
+        self.arrows_and_curves = []
         for k, d in enumerate(directions):
-            if k==1:
-                iter_formula = MathTex(r"\bf x_{k+1} = x_k +", "d_k").to_corner(DL)
-                self.add_fixed_in_frame_mobjects(iter_formula)
-                add_black_screen(self)
             dot_x, dot_fx, vec_d, animations = self.create_path(xk, d, f)
             xk += d
             self.play(animations['vec'][0])
-            self.add(add_label_d(vec_d, k+1).set_color(COLOR_ARROW))
+            lab_d = add_label_d(vec_d, k).set_color(COLOR_ARROW)
+            self.arrows_and_curves.append(lab_d)
+            self.add(lab_d)
             self.play(*animations['vec'][1:])
-            self.add(add_label_x(xk, k+1).set_color(COLOR_ARROW))
+            lab_x = add_label_x(xk, k+1).set_color(COLOR_ARROW)
+            self.arrows_and_curves.append(lab_x)
+            self.add(lab_x)
             add_black_screen(self)
             self.play(*animations['curve'])
             add_black_screen(self)
+
+        iter_formula = MathTex(r"\bf x_{k+1} = x_k +", "d_k").to_corner(DL)
+        self.add_fixed_in_frame_mobjects(iter_formula)
+        add_black_screen(self)
 
         ####################
         # Add quesiton about direction
         ####################
         self.play(Indicate(iter_formula[1]))
         add_black_screen(self)
+
+
+        ####################
+        # Add gradient and hessian
+        ####################
+        self.play(*[ApplyMethod(mobj.set_opacity, .1)
+            for mobj in self.arrows_and_curves])
+
+        lab_grad_f = MathTex(r"\nabla f({\bf x}) = ", )
+
+        vec_grad_f = Matrix([
+            [r"\partial f({\bf x}) \over \partial x_1"],
+            [r"\vdots"],
+            [r"\partial f({\bf x})\over \partial x_n"],
+        ], element_alignment_corner=0*UP, v_buff=1.2)
+        grad_f = VGroup(*stack_group_text([lab_grad_f, vec_grad_f], RIGHT))
+        grad_f.to_corner(DR).scale(.8)
+        self.add_fixed_in_frame_mobjects(grad_f)
+        self.play(Write(grad_f))
+        add_black_screen(self)
+
+
+        self.remove(grad_f)
+        lab_H_f = MathTex(r"\nabla^2 f({\bf x}) = ", )
+
+        vec_H_f = Matrix([
+            [r"\frac{\partial^2 f({\bf x})}{\partial x_1\partial x_1}, \ldots, \frac{\partial^2 f({\bf x})}{\partial x_1\partial x_n}"],
+            [r"\vdots"],
+
+            [r"\frac{\partial^2 f({\bf x})}{\partial x_n\partial x_1}, \ldots, \frac{\partial^2 f({\bf x})}{\partial x_n\partial x_n}"],
+        ], element_alignment_corner=0*UP, v_buff=1.2)
+        H_f = VGroup(*stack_group_text([lab_H_f, vec_H_f], RIGHT))
+        H_f.scale(.6).to_corner(DR)
+        self.add_fixed_in_frame_mobjects(H_f)
+        self.play(ShowCreation(H_f))
+        add_black_screen(self)
+
+
+
+
+        ##############
+        # To curved and back
+        ##############
+        saved_graph = graph.copy()
+        self.play(Transform(graph, graph_curved))
+        self.play(Transform(graph, saved_graph))
+        add_black_screen(self)
+
 
     def create_path(self, x0, d, f, run_time=1):
         def traj_on_plane_at(t):
@@ -207,6 +293,10 @@ class IterativeOpt(ThreeDScene):
             ShowCreation(traj_on_curve_tracker),
         ]
 
+        self.arrows_and_curves.extend([traj_on_curve, traj_on_plane,
+                                       traj_on_curve_tracker, traj_on_plane_tracker,
+                                       dot_on_curve, dot_on_plane,
+                                       vec_d])
         return dot_on_plane, dot_on_curve, vec_d, animations
 # Local Variables:
 # bachir-prog-local-mode: t
