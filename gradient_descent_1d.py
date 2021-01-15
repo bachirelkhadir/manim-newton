@@ -15,10 +15,21 @@ from opt_parameters import *
 
 
 
-DEBUG = False
+DEBUG = config.quality == "low_quality"
+
+COLOR_OPT = RED
 COLOR_CURVE = BLUE
 COLOR_TANGENT = YELLOW
-COLOR_QUAD = RED
+COLOR_QUAD = MAROON_A
+
+color_map = {
+    "f'(x_0)": COLOR_TANGENT,
+    "f'(x_k)": COLOR_TANGENT,
+    r"\nabla f(x_k)": COLOR_TANGENT,
+    "f''(x_k)": COLOR_QUAD,
+    "f''(x_0)": COLOR_QUAD,
+    r"\nabla^2 f(x_k)": COLOR_QUAD,
+}
 
 def run_newton(f, df, x0, num_iter=10000):
     xk = x0
@@ -32,7 +43,7 @@ def run_newton(f, df, x0, num_iter=10000):
 
 xks_newton = run_newton(f, df, x0)
 
-class GradientDescent1D(ZoomedScene):
+class GradientDescent1D(ZoomedScene, MovingCameraScene):
     NUM_BLACK_SCREENS = 0
     def wait(self, timeout=1):
         self.NUM_BLACK_SCREENS += 1
@@ -65,15 +76,25 @@ class GradientDescent1D(ZoomedScene):
         self.add_graph_f()
         self.wait()
 
+        #####################
+        # Show x star
+        #####################
+        dot_xstar = self.mark(xstar, label="x^*").set_color(COLOR_OPT)
+        self.play(Write(dot_xstar))
+        self.add(dot_xstar)
+        self.wait()
+        dot_xstar.set_opacity(.2)
+        self.wait()
+
         ###############
         # show x0 and f(x0)
         ###############
-        self.play(Write(self.mark(x0, label="x_0")))
+        self.play(Write(self.mark(x0, label="x_k")))
         self.wait()
         dashed_lines_fx0 = VGroup(
             self.dashed_line([x0, 0], f(x0) * UP),
             self.dashed_line([0, f(x0)], x0 * RIGHT),
-            self.mark(0, f(x0), label="f(x_0)", direction=RIGHT/2),
+            self.mark(0, f(x0), label="f(x_k)", direction=RIGHT/2),
         )
         self.play(Write(dashed_lines_fx0))
         self.wait()
@@ -81,14 +102,17 @@ class GradientDescent1D(ZoomedScene):
         dashed_lines_fx0.set_opacity(.2)
         self.wait()
 
+
         ###############
         # show approximation formula
         ###############
-        approx_formulas = stack_group_text(self.add_approximation_formula())
-        approx_formulas = VGroup(*approx_formulas)
-        approx_formulas.scale(.7).to_corner(DL)
-        self.add(approx_formulas)
+        approx_formulas = self.add_approximation_formula()
+        VGroup(*approx_formulas).scale(.9).to_corner(DL)
+        self.add(approx_formulas[0])
         self.wait()
+        self.play(Transform(*approx_formulas))
+        self.wait()
+        taylor_approx = approx_formulas[0]
 
 
         ###############
@@ -108,7 +132,7 @@ class GradientDescent1D(ZoomedScene):
         ###############
         # move x until it goes under the curve
         ###############
-        Dx = 2
+        Dx = 3.4
         moving_x = self.mark(x0, f(x0))
         moving_xs = [moving_x.copy() for _ in range(3)]
         moving_xs[1].set_color(COLOR_TANGENT)
@@ -128,8 +152,31 @@ class GradientDescent1D(ZoomedScene):
         self.remove(*moving_xs)
         self.wait()
 
+        ###############
+        # Rotate tangent
+        ###############
+        for i, theta in enumerate((PI/3, -PI/3)):
+            self.play(*[Rotate(t, theta, about_point=t.get_start()) for t in self.tangent_line])
+            self.wait()
+
+            moving_x = self.mark(x0, f(x0))
+            self.play(MoveAlongPath(moving_x, Line(self.tangent_line[1-i].get_start(),
+                                                   self.tangent_line[1-i].get_end(),
+                                                   )))
+            self.wait()
+            self.remove(moving_x)
+
+
         for mobj in self.zoomed_frame_objects:
             self.remove(mobj)
+
+        ###############
+        # Show GD
+        ###############
+        gd_formula= MathTex(r"x_{k+1}", " = x_k - \quad ", r"\alpha", "\quad f'(x_k)").set_color_by_tex_to_color_map(color_map)
+        gd_formula.to_corner(LEFT)
+        self.add(gd_formula)
+        self.wait()
 
         ################
         # show gradient
@@ -151,21 +198,31 @@ class GradientDescent1D(ZoomedScene):
         self.wait()
         self.play(Transform(grad0, grad0_small))
         self.wait()
+        self.remove(grad0)
 
+
+
+        #############################
+        # Quadratics
+        #############################
+        self.play(Indicate(taylor_approx))
+        quad_term = MathTex(r"+", "f''(x_k)", r"\frac{(x-x_k)^2}2").scale(.9)
+        quad_term.next_to(taylor_approx, RIGHT).set_color_by_tex_to_color_map(color_map)
+        self.add(quad_term)
+        self.wait()
 
         # Draw quad approximation
-
-        graph = add_2d_func(self.axes, quad_f(x0), -2, 3.)
-        graph.set_stroke(width=2, color=COLOR_QUAD)
-        self.play(ShowCreation(graph))
-
-
+        quad_line = add_2d_func(self.axes, lambda x: f(x0) + df(x0) * (x-x0), -3, 3.)
+        quad = add_2d_func(self.axes, quad_f(x0), -3, 3.)
+        quad_line.set_stroke(width=3, color=COLOR_QUAD)
+        quad.set_stroke(width=3, color=COLOR_QUAD)
+        self.add(quad_line)
+        self.play(Transform(quad_line, quad))
         self.wait()
-        for mobj in self.zoomed_frame_objects:
-            self.add(mobj)
 
-
-        self.wait()
+        # for mobj in self.zoomed_frame_objects:
+        #     self.add(mobj)
+        # self.wait()
 
         # Draw quad minimizer
         x_quad = x0 - df(x0) / ddf(x0)
@@ -174,11 +231,38 @@ class GradientDescent1D(ZoomedScene):
         self.wait()
 
         # Draw dashed line to x1
-        self.play(Write(self.dashed_line(xfx_quad, xfx_quad[1]*DOWN)))
+        self.play(Write(self.dashed_line(xfx_quad, xfx_quad[1]*DOWN).set_color(COLOR_QUAD)))
+        new_xkk = self.mark(x_quad, label=r"x_{k+1}", direction=DOWN).set_color(COLOR_QUAD)
+        self.add(new_xkk)
+        self.wait()
 
-        # Figure out the math
+        ## Correct GD formula
+        self.play(Transform(new_xkk.copy(), gd_formula[0]))
+        self.wait()
 
-        return
+        new_alpha = MathTex(r"1 \over {f''(x_k)}").scale(.8)
+        new_alpha.move_to(gd_formula[2]).set_color_by_tex_to_color_map(color_map)
+        self.play(Transform(gd_formula[2], new_alpha))
+        self.wait()
+
+        # Zoom in formula
+        zoomed_in_frame = self.camera_frame.copy()
+        zoomed_in_frame.scale(.5).shift(4*LEFT)
+        self.play(Transform(self.camera_frame, zoomed_in_frame))
+        self.wait()
+
+
+        # Make high dimension
+
+        new_alpha = MathTex(r"\nabla^2 f(x_k)^{-1}").scale(.7)
+        new_alpha.move_to(gd_formula[2]).shift(RIGHT/3).set_color_by_tex_to_color_map(color_map)
+        new_grad = MathTex(r"\nabla f(x_k)").scale(.7)
+        new_grad.move_to(gd_formula[3]).shift(2/3 * RIGHT).set_color_by_tex_to_color_map(color_map)
+        self.play(
+            Transform(gd_formula[3], new_grad),
+            Transform(gd_formula[2], new_alpha))
+        self.wait()
+
 
     def add_str_f(self):
         self.play(Write(MathTex(f_str).to_corner(UP)))
@@ -186,9 +270,9 @@ class GradientDescent1D(ZoomedScene):
 
     def add_graph_f(self):
         x_min, x_max = -4, 4
-        y_min, y_max = -2, 4
+        y_min, y_max = -1, 3
 
-        origin = 2 * DOWN + 2 * RIGHT
+        origin = 1 * DOWN + 2 * RIGHT
         x_axis, y_axis, coords_to_point = axes = add_2d_axes(x_min, x_max, y_min, y_max, origin)
         self.axes = axes
         self.coords_to_point = coords_to_point
@@ -248,12 +332,13 @@ class GradientDescent1D(ZoomedScene):
 
     def add_tangent(self, x):
         DfDx = RIGHT + df(x) * UP
-        DfDx /= np.linalg.norm(DfDx)
+        DfDx *= 2 / np.linalg.norm(DfDx)
         xfx = (x, f(x))
         self.play(Write(self.mark(*xfx)))
-        self.play(*[
-            ShowCreation(self.dashed_line(xfx, i * DfDx).set_color(COLOR_TANGENT))
-            for i in (2, -3)])
+
+        self.tangent_line = [self.dashed_line(xfx, i * DfDx).set_color(COLOR_TANGENT)
+                            for i in (2, -3)]
+        self.play(*map(ShowCreation, self.tangent_line))
 
     def mark(self, x, y=0, label=None, direction=DOWN):
         mark_group = [Line(UL, DR, stroke_width=2),
@@ -289,8 +374,8 @@ class GradientDescent1D(ZoomedScene):
 
     def add_approximation_formula(self):
         return [
-            MathTex(r"f'(x_0) \approx \frac{f(x) - f(x_0)}{x - x_0}"),
-            MathTex(r"f(x) \approx f(x_0) + f'(x_0)(x - x_0)")]
+            MathTex(r"f'(x_k)", r"\approx \frac{f(x) - f(x_k)}{x - x_k}").set_color_by_tex_to_color_map(color_map, substring=False),
+            MathTex(r"f(x)", r"\approx f(x_k) + ", "f'(x_k)", r"(x - x_k)").set_color_by_tex_to_color_map(color_map, substring=False)]
 
 
 

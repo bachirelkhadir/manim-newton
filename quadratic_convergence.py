@@ -47,9 +47,9 @@ def fit_digits(dec_number, value):
 class QuadConvergence(Scene):
 
     def construct(self):
-        self.add_graph_f()
-        self.wait()
-        return
+        # self.add_graph_f()
+        # self.wait()
+        # return
 
         tracker = ValueTracker(0.)
         newton_xk = DecimalNumber(float(x0), num_decimal_places=NUM_DIGITS).shift(3*UP).scale(.5)
