@@ -11,8 +11,6 @@ config.max_files_cached = 10000
 config.background_color = "#1f303e"
 
 DEBUG = config.quality == "low_quality"
-# PROJECT_DIR = '/home/bachir/Dropbox/Job_Applications/Academia/Application_Fall_2020/Application_By_School/UCLouvain/Presentations/newton/manim/'
-# sys.path.append(PROJECT_DIR)
 from helper_functions import *
 
 
